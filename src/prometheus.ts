@@ -73,7 +73,7 @@ export class Prometheus implements PromClient {
             help: 'Number of blocks produced by a validator',
             labelNames: ['network', 'name', 'address', 'environment']
         });
-        this.slashedReports = new promClient.Gauge({
+        this.slashedReports = new promClient.Counter({
             name: 'polkadot_validator_slashed_reports',
             help: 'Times a validator has been reported for slashing',
             labelNames: ['network', 'name', 'address', 'environment']

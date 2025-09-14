@@ -6,7 +6,15 @@ import { LoggerSingleton } from './logger';
 const logger = LoggerSingleton.getInstance()
 
 export const getActiveEraIndex = async (api: ApiPromise): Promise<number> => {
-  return (await api.query.staking.activeEra()).toJSON()['index']; 
+  const activeEra = await api.query.staking.activeEra();
+  const activeEraJson = activeEra.toJSON();
+
+  if (activeEraJson === null || activeEraJson === undefined) {
+    logger.warn('No active era found, defaulting to era index 0');
+    return 0;
+  }
+
+  return activeEraJson['index'] || 0;
 }
 
 export async function asyncForEach<T>(array: Array<T>, callback: (arg0: T, arg1: number, arg2: Array<T>) => void): Promise<void> {

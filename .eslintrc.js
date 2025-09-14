@@ -10,9 +10,11 @@ module.exports = {
     'plugin:@typescript-eslint/recommended',
   ],
   "rules": {
-    "@typescript-eslint/camelcase": ["error", { "properties": "never" } ]
+    "@typescript-eslint/no-explicit-any": "warn",
+    "@typescript-eslint/no-unused-vars": "warn"
   },
   env: {
     node: true,
+    mocha: true,
   },
 };
