@@ -18,7 +18,8 @@ export class Subscriber {
   constructor(
     private readonly cfg: InputConfig,
     private readonly api: ApiPromise,
-    private readonly promClient: PromClient
+    private readonly promClient: PromClient,
+    private readonly assetHubApi?: ApiPromise
   ) {
     this.validators = cfg.validators;
   }
@@ -38,15 +39,23 @@ export class Subscriber {
 
   private async _initInstanceVariables(): Promise<void> {
     this.sessionIndex = (await this.api.query.session.currentIndex()) as any;
-    this.currentEraIndex = await getActiveEraIndex(this.api);
+    this.currentEraIndex = await getActiveEraIndex(this.api, this.assetHubApi);
     this.validatorActiveSet = (await this.api.query.session.validators()) as any;
     await this._initValidatorsControllers();
   }
 
   private async _initValidatorsControllers(): Promise<void> {
+    // Use Asset Hub API if available, fallback to relay chain
+    const stakingApi = this.assetHubApi || this.api;
+
     for (const validator of this.validators) {
-      const controller = await this.api.query.staking.bonded(validator.address);
-      validator.controllerAddress = (controller as any).unwrapOr('').toString();
+      try {
+        const controller = await stakingApi.query.staking.bonded(validator.address);
+        validator.controllerAddress = (controller as any).unwrapOr('').toString();
+      } catch (error) {
+        this.logger.warn(`Failed to get controller for validator ${validator.name}: ${error.message}`);
+        validator.controllerAddress = '';
+      }
     }
   }
 
@@ -61,10 +70,21 @@ export class Subscriber {
   }
 
   private async _checkUnexpected(): Promise<void> {
-    const tmp = await this.api.derive.staking.queryMulti(
-      this.validators.map((v) => v.address),
-      { withDestination: true, withPrefs: true }
-    );
+    // Use Asset Hub API if available, fallback to relay chain
+    const stakingApi = this.assetHubApi || this.api;
+
+    let tmp;
+    try {
+      tmp = await stakingApi.derive.staking.queryMulti(
+        this.validators.map((v) => v.address),
+        { withDestination: true, withPrefs: true }
+      );
+    } catch (error) {
+      this.logger.warn(
+        `Failed to query staking info from ${this.assetHubApi ? 'Asset Hub' : 'relay chain'}: ${error.message}`
+      );
+      return; // Skip staking checks if we can't get the data
+    }
     const stakingMap = new Map<string, DeriveStakingQuery>();
     tmp.forEach((t) => stakingMap.set(t.accountId.toString(), t));
     this.validators.forEach((v) => {
@@ -251,7 +271,7 @@ export class Subscriber {
   private async _newSessionEventHandler(): Promise<void> {
     this.sessionIndex = (await this.api.query.session.currentIndex()) as any; // TODO improve, check if it is present in event
 
-    const newEraIndex = await getActiveEraIndex(this.api);
+    const newEraIndex = await getActiveEraIndex(this.api, this.assetHubApi);
     if (newEraIndex > this.currentEraIndex) {
       await this._newEraHandler(newEraIndex);
     }

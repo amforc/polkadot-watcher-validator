@@ -50,7 +50,9 @@ export async function startAction(cmd): Promise<void> {
         })    
     server.listen(cfg.port);
     
-    const api = await new Client(cfg).connect()
+    const client = new Client(cfg);
+    const api = await client.connect()
+    const assetHubApi = client.getAssetHubApi();
     const chain = await api.rpc.system.chain()
     const networkId = chain.toString().toLowerCase()
     const env = cfg.environment ? cfg.environment : environment
@@ -58,7 +60,7 @@ export async function startAction(cmd): Promise<void> {
     const promClient = new Prometheus(networkId,env);
     promClient.startCollection();
 
-    const subscriber = new Subscriber(cfg, api, promClient);
+    const subscriber = new Subscriber(cfg, api, promClient, assetHubApi);
     await subscriber.start();
 
     _addTestEndpoint(server,subscriber)
