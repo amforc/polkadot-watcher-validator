@@ -6,3 +6,6 @@ dist/
 helmfile.d/.cache
 helmfile.d/.config
 helmfile.d/.kube
+
+# IDE
+.vscode/*
