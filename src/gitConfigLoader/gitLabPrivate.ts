@@ -1,5 +1,4 @@
 import { GitConfigLoader } from "./gitConfigLoaderInterface";
-import fetch from 'node-fetch';
 import fs from 'fs';
 import { Config } from '@w3f/config';
 import { InputConfigFromGit, Subscribable } from "../types";
